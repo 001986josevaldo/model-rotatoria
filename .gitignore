@@ -1,0 +1,9 @@
+*.jpeg
+*jpg
+videos/
+.env
+*.env
+**/venv
+**/Reports
+**/Processed
+*.txt
