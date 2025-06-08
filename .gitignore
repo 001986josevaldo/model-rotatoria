@@ -1,0 +1,32 @@
+# === Arquivos sensíveis ===
+.env
+*.env
+aws_credentials.py
+
+# === Arquivos grandes ===
+*.mp4
+*.zip
+*.csv
+*.jpg
+*.jpeg
+*.pyc
+
+# === Pastas com dados processados e temporários ===
+videos/
+recortes_1min/
+Reports/
+Processed/
+conferir/
+__pycache__/
+venv/
+.venv/
+token/
+
+# === Ignorar IDEs (opcional) ===
+.vscode/
+.idea/
+
+# === Logs e arquivos do sistema (opcional) ===
+*.log
+.DS_Store
+Thumbs.db
