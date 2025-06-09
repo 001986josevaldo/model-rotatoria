@@ -11,8 +11,6 @@ from aws_credentials import AWSCredentials
 
 aws_access_key = AWSCredentials.AWS_ACCESS_KEY_ID
 aws_secret_key = AWSCredentials.AWS_SECRET_ACCESS_KEY
-print(aws_access_key)
-print(aws_secret_key)
 region = "us-east-1"
 bucket_name = "rotatoria-videos-bucket"
 bucket_name_processed_videos = "rotatoria-processed-videos-bucket" 
