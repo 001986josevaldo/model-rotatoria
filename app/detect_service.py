@@ -449,7 +449,7 @@ class trafic_analizer:
         #os.makedirs(output_dir, exist_ok=True)
         output_csv_path = os.path.join(output_dir, f"{base_name}.csv")
 
-        model = "/media/josevaldo/E02A-3159/rotatoria_api_service/app/services/ai_models/trafego.pt"
+        model = "ai_models/trafego.pt"
         #model = "/home/josevaldo/Documentos/ProjDebora/modelos/trafego2.pt"
 
         #print(f"Caminho completo do modelo: {model}")
@@ -472,6 +472,7 @@ class trafic_analizer:
         self.s3_service.convert_video_to_h264(video_path)
 
         #self.s3_service.upload_file(local_file_path=output_csv_path, s3_file_name=nome_arquivo)
+        '''
         # envia o relatorio
         self.s3_service.upload_file(output_csv_path, 
                                     video_id=video_id,
@@ -485,7 +486,7 @@ class trafic_analizer:
         )
 
         # Apaga os diretorios locais
-        '''
+        
         self.s3_service.delete_local_directories(
             directories=[
                 "Processed",

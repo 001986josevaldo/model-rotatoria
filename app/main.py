@@ -81,8 +81,8 @@ analyzerGap = gap_analizer(
 
 def lambda_function(): # index, xxx de paramentros    
     #idfileName = msg()
-    idfileName = '{"id": 7,"fileName": "parte_014.mp4", "index": 1}'
-    print(idfileName)
+    idfileName = '{"id": 7,"fileName": "parte_012.mp4", "index": 2}'
+    #print(idfileName)
     idfileName = json.loads(idfileName)
 
  

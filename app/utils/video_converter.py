@@ -19,7 +19,7 @@ class VideoConverter:
                 "-crf", "23",
                 temp_output
             ]
-            subprocess.run(command, check=True)
+            subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             os.replace(temp_output, input_video)
             print("✅ Vídeo convertido com sucesso para H.264.")
             return True

@@ -108,31 +108,38 @@ class ContadorVeiculos:
         """
         entrada_por_id = {v['id']: v for v in lista_entrada}
         saida_por_id = {v['id']: v for v in lista_saida}
-        todos_ids = set(entrada_por_id.keys()).union(set(saida_por_id.keys()))
-        
+        todos_ids = set(entrada_por_id.keys()).union(saida_por_id.keys())
+
         registros_preliminares = []
-        
+
         for veiculo_id in todos_ids:
             entrada = entrada_por_id.get(veiculo_id, {})
             saida = saida_por_id.get(veiculo_id, {})
             classe = entrada.get('class', saida.get('class', 'Desconhecido'))
-            
+
             registros_preliminares.append({
-                'time': entrada.get('time', saida.get('time', 'null')),
+                'time': entrada.get('time') or saida.get('time') or 'null',
                 'id': veiculo_id,
                 'class': classe,
-                'speed': entrada.get('speed', saida.get('speed', 'null')),
-                'entrada': entrada.get('EB', entrada.get('EA', 'null')),
+                'speed': entrada.get('speed') or saida.get('speed') or 'null',
+                'entrada': entrada.get('EB') or entrada.get('EA') or 'null',
                 'saida': saida.get('Saida', 'null')
             })
 
         def time_to_seconds(t):
-            if t == 'null': return float('inf')
-            m, s = map(int, t.split(':'))
-            return m * 60 + s
+            """Converte string de tempo no formato MM:SS ou segundos decimais para float."""
+            if t == 'null':
+                return float('inf')
+            try:
+                if ':' in t:
+                    m, s = map(float, t.split(':'))
+                    return m * 60 + s
+                return float(t)
+            except ValueError:
+                return float('inf')
 
         registros_ordenados = sorted(registros_preliminares, key=lambda x: time_to_seconds(x['time']))
-        
+
         contagem_seq = defaultdict(int)
         for registro in registros_ordenados:
             contagem_seq[registro['class']] += 1
@@ -141,7 +148,7 @@ class ContadorVeiculos:
         with open(arquivo, mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerow(['Time', 'Id', 'Class', 'Number', 'Speed', 'Entrada', 'Saida', 'Total Geral'])
-            
+
             for i, registro in enumerate(registros_ordenados):
                 writer.writerow([
                     registro['time'],

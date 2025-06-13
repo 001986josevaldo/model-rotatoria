@@ -106,7 +106,7 @@ class pet_analizer:
             return None  # não entrou ou já estava dentro
 
         # Coordenadas do retângulo de contagem
-        rect_x1, rect_y1 = 270, 290 # 
+        rect_x1, rect_y1 = 250, 280 # 
         rect_x2, rect_y2 = (rect_x1 + 60), (rect_y1 + 60)
     
 
@@ -518,7 +518,7 @@ class pet_analizer:
         
         VideoConverter.convert_video_to_h264(video_path)
 
-        '''
+        
         self.s3_service.upload_file(output_csv_path, 
                                     video_id=video_id,
                                     name=video_key)  # Envia para rotatoria-reports por padrão
@@ -531,14 +531,14 @@ class pet_analizer:
         )
 
         # Apaga os diretorios locais
-        
+        '''
         self.s3_service.delete_local_directories(
             directories=[
                 "Processed",
                 "Reports"
             ]
-        )
+        )'''
         # deleta o video do s3
         #self.s3_service.delete_video(video_key)
         self.s3_service.cleanup()       
-'''
+
