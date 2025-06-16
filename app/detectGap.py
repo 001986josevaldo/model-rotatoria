@@ -11,7 +11,7 @@ from utils.line_create import DesenhadorLinhas
 from utils.s3_video_service import S3VideoService
 #import json
 from utils.video_converter import VideoConverter
-#from utils.salvarcsvPet import RelatorioCSV  # Ajuste o nome conforme seu arquivo .py
+from utils.salvarcsvGap import SalvarCSVGap  # Ajuste o nome conforme seu arquivo .py
 
 
 class gap_analizer:
@@ -35,6 +35,7 @@ class gap_analizer:
         model = YOLO(model_path) #"/home/josevaldo/Documentos/ProjDebora/rotatoria_api_service/app/modelos/trafego.pt"
         
         tracker = Sort(max_age=1000, min_hits=5)  # Rastreador
+        salvar = SalvarCSVGap()
 
         # Carrega o vídeo - mantenha esta variável separada
         input_video = input_video #'/home/josevaldo/Documentos/ProjDebora/videos/trafego2.mp4'  # Esta é a string com o caminho
@@ -92,6 +93,7 @@ class gap_analizer:
         x1LinhaAzul, y1LinhaAzul, x2LinhaAzul, y2LinhaAzul = linhas[1][:4]
         historico_cy = {}
         historico_cx = {}
+        veiculos_cruzaram_azul = {}
 
         tempo_inicio_cruzamento = None
         ultimo_obj_id = None
@@ -99,6 +101,7 @@ class gap_analizer:
         tempos_entre_cruzamentos = []
         lista_entrada = []
         ultimo_intervalo = None 
+        statusTeste = "Rejeitado"
 
         while True:
             
@@ -234,69 +237,88 @@ class gap_analizer:
                 if cruzouAzul:
                     #cv2.circle(img, (cx,cy), 5, (0, 165, 255), -1)
                     frame_atual = int(video.get(cv2.CAP_PROP_POS_FRAMES))
-                    timefps = temporizador.calcular_segundos(frame_atual)
-                    print("Time por fps linha azul: ", timefps)
+                    timefpsAzul = temporizador.calcular_segundos(frame_atual)
+                    print("Time por fps linha azul: ", timefpsAzul)
                     cv2.circle(img, (cx,cy), 5, (0, 165, 255), -1)
-                    print("↪️ cruzouVerde:", cruzouVerde, "↪️ cruzouAzul:", cruzouAzul)
-                
+                    #print("↪️ cruzouVerde:", cruzouVerde, "↪️ cruzouAzul:", cruzouAzul)
+
+                    veiculos_cruzaram_azul[obj_id] = timefpsAzul  # memoriza o ID e tempo
+                    status = "Aceito"
+                    statusTeste = "Aceito"
+                    #print("⚠️ Status cond:", status)
+
+
+                #print("status antes de cruzouVerde:", status)
                 if cruzouVerde:
                     agora = time.time()
                     frame_atual = int(video.get(cv2.CAP_PROP_POS_FRAMES))
-                    timefps = temporizador.calcular_segundos(frame_atual)
-                    print("Time por fps linha Verde: ", timefps)
+                    timefpsVerde = temporizador.calcular_segundos(frame_atual)
+                    print("Time por fps linha Verde: ", timefpsVerde)
                     #cv2.circle(img, (cx,cy), 5, (0, 165, 255), -1)
                     ultimo_nome = nome_str
-                    cond = "Rejeitado"  # ← valor padrão
-
+                    status = "Rejeitado"  # ← valor padrão
+                    print("statusTeste: ", statusTeste)
                     if tempo_inicio_cruzamento is not None and ultimo_obj_id_2 is not None:
                         intervalo = agora - tempo_inicio_cruzamento
-                        gap = round(timefps - time2, 2) # recebe 2 casas decimais
-
+                        gap = round(timefpsVerde - time2, 2) # recebe 2 casas decimais
+                        
+                        if status == "Aceito": #não esta entrando nessa condição
+                            print(cruzouAzul,status)
+                            status = "Aceito"
+                        print("statusTeste: ", statusTeste)
                         #print(f"\nTempo entre cruzamento do veículo {ultimo_obj_id_2} com {obj_id}: {intervalo:.2f} segundos")
-                        print(f"Gap entre veiculo {ultimo_obj_id_2} com {obj_id}: {gap:.2f} segundos\n",)
+                        print(f"Gap entre veiculo {ultimo_obj_id_2} com {obj_id}: {gap:.2f} segundos, status: {statusTeste}\n",)
                         # Atualiza as variáveis de exibição
                         ultimo_intervalo = intervalo
                         ultimo_obj_id = ultimo_obj_id_2  # anterior
                         ultimo_obj_id_2 = obj_id         # atual
-                        print("↪️ cruzouVerde:", cruzouVerde, "↪️ cruzouAzul:", cruzouAzul)
+                        #print("↪️ cruzouVerde:", cruzouVerde, "↪️ cruzouAzul:", cruzouAzul)
+                        
+                        
+                        '''
                         if cruzouAzul:
                             cond = "Aceito"
                         print("⚠️ Status cond:", cond)  # Verifique se está realmente sendo alterado
-
+                        '''
 
                         # Salva os dados no formato desejado:
                         linha_dados = [
-                            time2,           # Tempo do frame atual
+                            time2,           # Tempo 
                             ultimo_obj_id,             # ID anterior
                             ultimo_nome,
                             ultima_vel,
-                            #len(lista_entrada) + 1,    # Contador (incremental)
                             
-                            timefps,           # Tempo novamente (pode ser outro se preferir)
-                            obj_id,                    # ID atual
+                            
+                            timefpsVerde,           # 
+                            obj_id,                    # ID a
                             nome_str,
                             vel,
                             gap,
-                            cond   
+                            statusTeste   
                         ]
 
                         lista_entrada.append(linha_dados)
-
-                        time2 = timefps
+                        statusPrint = statusTeste
+                        statusTeste = "Rejeitado"
+                        
+                        time2 = timefpsVerde
                         ultima_vel = vel
-
+                        
 
 
 
                     # Atualiza os dados na primeira passagem
                     tempo_inicio_cruzamento = agora
-                    time2 = timefps
+                    time2 = timefpsVerde
                     ultimo_obj_id_2 = obj_id
                     ultima_vel = vel
+                    #status = "Rejeitado"
+
                 
                 # Atualiza posição atual
                 historico_cy[obj_id] = cy
                 historico_cx[obj_id] = cx                 
+            
 
             if cv2.waitKey(1) == 27:
                 break
@@ -309,13 +331,14 @@ class gap_analizer:
             if ultimo_intervalo is not None and ultimo_obj_id is not None and ultimo_obj_id_2 is not None:
                 cv2.putText(
                     img,
-                    f"GAP entre {ultimo_obj_id} e {ultimo_obj_id_2}: {gap:.2f}s",
+                    f"GAP entre {ultimo_obj_id} e {ultimo_obj_id_2}: {gap:.2f}s, status: {statusPrint}",
                     (30, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
                     (0, 255, 0),
                     2
                 )
+            
             # Escrever o frame no vídeo
             out.write(img)
             # visualçização
@@ -332,7 +355,8 @@ class gap_analizer:
             print(lista_entrada)
         else:
             print("Lista vazia.")
-
+        # Salva a contagem final em um CSV com o mesmo nome base
+        salvar.salvarcsvGap(lista_entrada, output_csv_path)
 
         # Salva a contagem final em um CSV com o mesmo nome base
         #RelatorioCSV.salvar_contagem_csv(lista_veiculos, lista_saidas, output_csv_path)
