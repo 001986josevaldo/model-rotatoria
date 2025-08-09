@@ -11,6 +11,7 @@ from utils.line_create import DesenhadorLinhas
 from utils.s3_video_service import S3VideoService
 import json
 #from utils.s3Uploader import S3Uploader
+from utils.video_converter import VideoConverter
 
 class trafic_analizer:
     def __init__(self, aws_access_key, aws_secret_key, region, bucket_name):
@@ -118,6 +119,16 @@ class trafic_analizer:
         inicio2 = CalcularTempo()  # Inicia o contador automaticamente
         #print('inicio2:', inicio2.tempo_decorrido())
 
+        ids_registrados = set()  # Conjunto para armazenar IDs já registrados
+
+                        
+        mapeamento_nomes = {
+        0: "Caminhao",
+        1: "Carro",
+        2: "Moto"
+        }
+
+
         while True:
             
             _, img = video.read()
@@ -148,7 +159,7 @@ class trafic_analizer:
             #cv2.line(img, (x1, ylinha2), (x2, ylinha2), (0, 0, 255), 2)
 
             # Detecta veículos
-            results = model(img, stream=True, verbose=False)
+            results = model(img, stream=True, verbose=False, device=0, conf=0.25)  # Ajuste o threshold de confiança conforme necessário
             detections = np.empty((0,7))
             #print("detections", results)
 
@@ -170,7 +181,7 @@ class trafic_analizer:
                     #print(nomeClass)
                     
                     # Verifica classes desejadas
-                    if  nomeClass in ["carro", "moto", "caminhao"] and conf > 70:
+                    if  nomeClass in ["carro", "moto", "caminhao"] and conf > 30:
 
                         # Coordenadas do bounding box
                         x1, y1, x2, y2 = x.xyxy[0]
@@ -221,12 +232,7 @@ class trafic_analizer:
                 
                 
                 
-                
-                mapeamento_nomes = {
-                0: "Caminhao",
-                1: "Carro",
-                2: "Moto"
-                }
+
 
                 nome_str = mapeamento_nomes.get(nomeObjeto, "Desconhecido")  # Retorna "Desconhecido" se o valor não estiver no dicionário
             
@@ -260,6 +266,22 @@ class trafic_analizer:
                     tempo_formatado = inicio2.tempo_decorrido()
                     EB = 'EB'
                         # Verifica se o veículo já foi registrado
+                    
+                    if obj_id not in ids_registrados:
+                        lista_veiculos.append({
+                            'id': obj_id,
+                            'class': nome_str,
+                            'time': tempo_formatado,
+                            'speed': vel,
+                            'EB': EB,  # ou EA
+                        })
+                        ids_registrados.add(obj_id)
+                    
+                    
+                    
+                    
+                    
+                    '''
                     if not any(veic['id'] == obj_id for veic in lista_veiculos):
                         # Adiciona um novo dicionário com todas as informações
                         lista_veiculos.append({
@@ -272,11 +294,24 @@ class trafic_analizer:
                             'EB': EB
                         })
                         #print(f"Novo registro - ID: {obj_id}, Tipo: {nomeObjeto}")
-                
+                '''
+
                 cruzou, img = detector_de_entrada_A.verificar_cruzamento(img, cx, cy)  # Ponto (250,210) está abaixo da linha y=200
                 if cruzou:
                     tempo_formatado = inicio2.tempo_decorrido() 
                     EA = 'EA'
+                    
+                    if obj_id not in ids_registrados:
+                        lista_veiculos.append({
+                            'id': obj_id,
+                            'class': nome_str,
+                            'time': tempo_formatado,
+                            'speed': vel,
+                            'EA': EA, #'EB': EB,  # ou EA
+                        })
+                        ids_registrados.add(obj_id)
+                    
+                    '''    
                     if not any(veic['id'] == obj_id for veic in lista_veiculos):
                         # Adiciona um novo dicionário com todas as informações
                         lista_veiculos.append({
@@ -288,6 +323,10 @@ class trafic_analizer:
                             'speed': vel,
                             'EB': EA
                         })
+                '''
+                
+                
+                
                 # ---------- SAIDAS ------------------------------------
                 cruzou, img = detector_de_saida_C.verificar_cruzamento(img, cx, cy)  # Ponto (250,210) está abaixo da linha y=200
                 if cruzou:
@@ -382,10 +421,7 @@ class trafic_analizer:
             # Exibe a contagem total de veículos
             total = len(contadorEntradas.get_contadorA())+ len(contadorEntradas.get_contadorB())
             if total_anterior != total:     
-                #print(f"Total Aprox. Veiculos: {total}")
-                for i in range(3):
-                    print("Processando" + "." * (i + 1), end="\r", flush=True)
-                    time.sleep(0.5)
+                #print(f"Total Aprox. Veiculos: {total}") 
                 total_anterior = total
 
             if cv2.waitKey(1) == 27:
@@ -406,7 +442,7 @@ class trafic_analizer:
             # Escrever o frame no vídeo
             out.write(img)
             # visualçização
-            #cv2.imshow('Conflitos de Trafego',img)
+            cv2.imshow('Conflitos de Trafego',img)
 
             # Aguarda o tempo necessário para manter os 30 FPS
             tempo_execucao = time.time() - inicio
@@ -425,14 +461,40 @@ class trafic_analizer:
         try:
             print('msg rec.',xxx)
             mensagem = xxx
-            #mensagem = json.loads(mensagem)  # Agora é um dict
+        # 1) Normaliza a entrada: pode ser dict, JSON string ou caminho string
+            if isinstance(mensagem, str):
+                # tenta JSON; se falhar, trate como caminho direto
+                try:
+                    mensagem = json.loads(mensagem)
+                except Exception:
+                    mensagem = {"video_path": xxx}
+            # 2) Extrai campos úteis (se existirem)
             video_id = mensagem.get("id")
-            video_key = mensagem.get("fileName")
-            #print('id do video: ',video_id, 's3_video_key',video_key)
+            index = mensagem.get("index")
 
-            #video_key = self.s3_service.get_video_key_from_message(mensagem)
-            input_video = self.s3_service.download_video(video_key)
-            video_base_name = os.path.splitext(os.path.basename(video_key))[0]  # Ex: "rotatoria"
+            # 3) Pega o caminho do vídeo:
+            #    - preferimos 'video_path' (uso local)
+            #    - fallback para 'fileName' (uso antigo/S3)
+            video_path = mensagem.get("video_path")
+            if not video_path:
+                video_key = (mensagem.get("fileName")
+                            or mensagem.get("key")
+                            or mensagem.get("s3_key"))
+                if not video_key:
+                    raise ValueError("Nenhum caminho de vídeo encontrado. Informe 'video_path' ou 'fileName'.")
+                # se ainda usa S3, aqui você poderia baixar:
+                # input_video = self.s3_service.download_video(video_key)
+                # video_path = input_video
+                # por ora, use o próprio nome/Key:
+                video_path = video_key
+
+            # 4) Segurança: valida caminho local se absoluto
+            if os.path.isabs(video_path) and not os.path.exists(video_path):
+                raise FileNotFoundError(f"Vídeo não encontrado: {video_path}")
+
+            # 5) Agora sim: extrai o nome base sem erro
+            video_base_name = os.path.splitext(os.path.basename(video_path))[0]
+            print(f"[INFO] id={video_id} index={index} base='{video_base_name}'")
 
         except FileNotFoundError as e:
             print(f"Arquivo não encontrado: {e}")
@@ -441,7 +503,7 @@ class trafic_analizer:
             print(f"Erro ao acessar S3: {e}")
             return
         
-        #input_video = "/home/josevaldo/Documentos/ProjDebora/videos/rotatoria.mp4"
+        input_video = "/home/josevaldo/Downloads/Vdebora/113.mp4"
         #video_base_name = "rotatoria123"
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         base_name = video_base_name
@@ -449,19 +511,23 @@ class trafic_analizer:
         #os.makedirs(output_dir, exist_ok=True)
         output_csv_path = os.path.join(output_dir, f"{base_name}.csv")
 
-        model = "ai_models/trafego.pt"
+        model = "/home/josevaldo/Documentos/model-rotatoria/app/ai_models/trafego.pt"
         #model = "/home/josevaldo/Documentos/ProjDebora/modelos/trafego2.pt"
 
         #print(f"Caminho completo do modelo: {model}")
 
         linhas = [
-            (250, 60, 360, 60, (255, 0, 0)),
-            (200, 220, 200, 390, (255, 0, 0)),
-            (100, 100, 100, 200, (0, 255, 0)),
-            (270, 430, 400, 430, (0, 255, 0)),
-            (800, 170, 800, 330, (0, 255, 0)),
-            (380, 60, 480, 60, (0, 255, 0)),
+            #x1,  y1, x2, y2,       cor
+            (280, 60, 390, 60, (255, 0, 0)), # Linha A
+            (200, 250, 200, 400, (255, 0, 0)),
+            (100, 140, 100, 220, (0, 255, 0)), # saida A
+            (290, 430, 400, 430, (0, 255, 0)), # saida B
+            (800, 150, 800, 300, (0, 255, 0)), # saida C
+            (430, 60, 530, 60, (0, 255, 0)), # saida D
         ]
+
+        
+        VideoConverter.ensure_max_fps(input_video)
 
         self.trafic_analyzer(input_video, model, linhas, output_csv_path, video_base_name)
 
