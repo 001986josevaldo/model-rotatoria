@@ -474,7 +474,7 @@ class trafic_analizer:
 
             # 3) Pega o caminho do vídeo:
             #    - preferimos 'video_path' (uso local)
-            #    - fallback para 'fileName' (uso antigo/S3)
+            #    - fallback para 'fileName' (uso/S3)
             video_path = mensagem.get("video_path")
             if not video_path:
                 video_key = (mensagem.get("fileName")
@@ -502,8 +502,9 @@ class trafic_analizer:
         except RuntimeError as e:
             print(f"Erro ao acessar S3: {e}")
             return
-        
-        input_video = "/home/josevaldo/Downloads/Vdebora/113.mp4"
+        print(video_base_name)
+
+        input_video = "/home/josevaldo/Documentos/model-rotatoria/app/videos/113.mp4"
         #video_base_name = "rotatoria123"
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         base_name = video_base_name
@@ -518,15 +519,15 @@ class trafic_analizer:
 
         linhas = [
             #x1,  y1, x2, y2,       cor
-            (280, 60, 390, 60, (255, 0, 0)), # Linha A
-            (200, 250, 200, 400, (255, 0, 0)),
-            (100, 140, 100, 220, (0, 255, 0)), # saida A
-            (290, 430, 400, 430, (0, 255, 0)), # saida B
-            (800, 150, 800, 300, (0, 255, 0)), # saida C
-            (430, 60, 530, 60, (0, 255, 0)), # saida D
+            (300, 60, 450, 60, (255, 0, 0)), # Linha A azul de cima
+            (200, 200, 200, 350, (255, 0, 0)),
+            (100, 80, 100, 180, (0, 255, 0)), # saida A
+            (290, 430, 450, 430, (0, 255, 0)), # saida B
+            (800, 150, 800, 400, (0, 255, 0)), # saida C
+            (480, 60, 580, 60, (0, 255, 0)), # saida D
         ]
 
-        
+
         VideoConverter.ensure_max_fps(input_video)
 
         self.trafic_analyzer(input_video, model, linhas, output_csv_path, video_base_name)

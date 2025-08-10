@@ -1,6 +1,6 @@
 from detect_service import trafic_analizer
-from detectPetLocal import pet_analizer
-from detectGapLocal import gap_analizer
+from detectPet import pet_analizer
+from detectGap import gap_analizer
 import boto3
 import json
 import sys
@@ -78,36 +78,64 @@ analyzerGap = gap_analizer(
 )
 
 
-def lambda_function(): # index, xxx de paramentros    
-    #idfileName = msg()
-    idfileName = '{"id": 7,"fileName": "127.mp4", "index": 2}'
-    #print(idfileName)
-    idfileName = json.loads(idfileName)
-    #print(idfileName)
-    # Substitua a lógica de download por caminho local
-    local_video_dir = "/home/josevaldo/Documentos/model-rotatoria/app/videos/"
-    local_video_path = os.path.join(local_video_dir, idfileName["fileName"])
 
-    #print("diretorio do video",local_video_path)
-    # Cria novo dicionário com o caminho local incluso
+
+
+def lambda_function():  # index, xxx de parâmetros
+    # 1) Recebe a mensagem da SQS (string JSON)
+    raw_msg = msg()
+    data = json.loads(raw_msg)
+    print(data)
+
+    # 2) Extrai campos (com defaults seguros)
+    video_id = data.get("id")
+    file_name = data.get("fileName")
+    index = data.get("index", 0)
+
+    if not file_name:
+        raise ValueError("Mensagem sem 'fileName'.")
+
+    # 3) Tenta caminho local primeiro
+    local_video_dir = "/home/josevaldo/Downloads/Vdebora/115.mp4"
+    local_video_path = os.path.join(local_video_dir, file_name)
+
+    source = "local"
+    resolved_path = local_video_path
+
+    if not os.path.exists(local_video_path):
+        # 4) Fallback para S3 caso o arquivo local não exista
+        source = "s3"
+        resolved_path = analyzer.s3_service.download_video(file_name)
+        if not resolved_path or not os.path.exists(resolved_path):
+            raise FileNotFoundError(
+                f"Falha ao obter vídeo. Não existe local '{local_video_path}' "
+                f"e download S3 retornou inválido: '{resolved_path}'"
+            )
+
+    # 5) Monta payload padronizado para o execute()
     video_info = {
-        "id": idfileName["id"],
-        "video_path": local_video_path,
-        "index": idfileName["index"]
+        "id": video_id,
+        "index": index,
+        "source": source,            # 'local' ou 's3'
+        "video_path": resolved_path, # caminho local garantido
     }
 
+    print("msg rec.", video_info)
 
-    #print("msg rec.", video_info)
-
- 
-    if idfileName["index"] == 0:
+    # 6) Roteia conforme 'index'
+    if index == 0:
+        # analyzer.execute espera dict -> OK
         analyzer.execute(video_info)
 
-    elif idfileName["index"] == 1:
-        analyzerPet.executePet(video_info)
+    elif index == 1:
+        # estes recebem caminho (string)
+        analyzerPet.executePet(resolved_path)
 
-    elif idfileName["index"] == 2:
-        analyzerGap.executeGap(video_info)
+    elif index == 2:
+        analyzerGap.executeGap(resolved_path)
 
-if __name__== "__main__":
+    else:
+        print(f"[WARN] index desconhecido: {index}")
+
+if __name__ == "__main__":
     lambda_function()

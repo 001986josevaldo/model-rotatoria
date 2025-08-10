@@ -5,7 +5,7 @@ import boto3
 import json
 import sys
 import os
-from aws_credentials import AWSCredentials
+from utils.aws_credentials import AWSCredentials
 
 # Parâmetros de configuração
 
@@ -81,7 +81,7 @@ analyzerGap = gap_analizer(
 
 def lambda_function(): # index, xxx de paramentros    
     #idfileName = msg()
-    idfileName = '{"id": 7,"fileName": "parte_012.mp4", "index": 2}'
+    idfileName = '{"id": 7,"fileName": "118.mp4", "index": 0}'
     #print(idfileName)
     idfileName = json.loads(idfileName)
 
